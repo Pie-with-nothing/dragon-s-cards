@@ -1,25 +1,30 @@
 from random import randint as rd
-from random import choices
-from math import log2, ceil
+from math import ceil, log2
 from copy import deepcopy
 from caissify_pairings import generate_pairings
+
+"""
+3.5 - стандарт d6
+4.25 - рерол
+4.625 - рерол+рерол
+4.47 - премка
+5.07 - премка+прем_рерол
+5.34 - премка+прем_рерол+прем_рерол
+"""
 
 
 def d6(advantage: bool) -> int:
     return max(rd(1, 6), rd(1, 6)) if advantage else rd(1, 6)
 
 
-# ---------- Игроки (теперь просто дата-холдеры) ----------
-
 class Player:
     _id_counter = 0
 
-    def __init__(self, name: str, dice_pull: int, modif: int, reroll=0, advantage=False):
+    def __init__(self, name: str, dice_pull: int, modif: int, reroll=0, advantage=False, is_human=False):
         if dice_pull <= 0:
             raise ValueError("dice_pull must be positive")
         if reroll < 0:
             raise ValueError("reroll cannot be negative")
-
         self.id = Player._id_counter
         Player._id_counter += 1
         self.name = name
@@ -27,6 +32,7 @@ class Player:
         self.modif = modif
         self.reroll = reroll
         self.advantage = advantage
+        self.is_human = is_human
         self._avg_sum = self._comp_avg_sum()
 
     def _comp_avg_sum(self):
@@ -42,27 +48,12 @@ class Player:
         return f'{self.id}: {self.name}'
 
     def full_info(self):
-        ret = f"{self.id}: {self.name} - {self.dice_pull}d6+{self.modif}"
+        pc = "PC" if self.is_human else "NPC"
+        ret = f"{self.id}: {self.name} ({pc}) - {self.dice_pull}d6+{self.modif}"
         ur = f", {self.reroll} переброс(а)" if self.reroll else ""
         n = f", преимущество" if self.advantage else ""
         return f"{ret}{ur}{n}"
 
-    @property
-    def is_human(self) -> bool:
-        return False
-
-
-class PC_Player(Player):
-    @property
-    def is_human(self) -> bool:
-        return True
-
-
-class NPC_Player(Player):
-    pass
-
-
-# ---------- Движок турнира (без ввода-вывода) ----------
 
 class Tour_Table:
     def __init__(self, players: list[Player]):
@@ -81,15 +72,12 @@ class Tour_Table:
 
     def _get_pairs(self) -> list[dict]:
         json_players = [{
-            "id": id_,
-            "name": player.name,
-            "score": self.scores[id_],
-            "rating": player._avg_sum,
+            "id": id_, "name": p.name,
+            "score": self.scores[id_], "rating": p._avg_sum,
             "color_hist": self.players_clr_hist[id_],
             "float_history": self.players_flt_hist[id_],
             "bye_count": self.players_byes[id_],
-        } for id_, player in self.players.items()]
-
+        } for id_, p in self.players.items()]
         return generate_pairings(
             system="dutch",
             players=json_players,
@@ -111,7 +99,6 @@ class Tour_Table:
                 self.players_clr_hist[id_].append(("white", "black")[i])
                 self.players_flt_hist[id_].append(float_[i])
             self.prev_pairs.add(tuple(sorted([white_id, black_id])))
-
         self.road_map[self.curr_round - 1]["matches"].append({
             "white_id": white_id,
             "black_id": black_id,
@@ -151,8 +138,6 @@ class Tour_Table:
         return [self.players[i[0]] for i in sort_scores]
 
 
-# ---------- Конечный автомат турнира ----------
-
 class TournamentSM:
     IDLE = "idle"
     WAITING_PC_ROLL = "waiting_pc_roll"
@@ -172,15 +157,15 @@ class TournamentSM:
         self._pair_rolls: list[dict] = []   # [{"id": int, "roll": int}] до 2 шт.
         self._npc_ctx: dict | None = None   # {"player_id", "dice", "remaining", "advantage"}
 
-    # -------- публичный API --------
+    @property
+    def is_waiting(self) -> bool:
+        return self.state in (self.WAITING_PC_ROLL, self.WAITING_REROLL)
 
     def start_round(self):
-        """Инициирует следующий раунд и «крутит» автомат до первого ожидания ввода."""
         if not self.tour.is_going():
             self.state = self.TOURNAMENT_DONE
             self.prompt = "Турнир завершён"
             return
-
         self.tour.curr_round += 1
         self.tour.road_map.append({"round": self.tour.curr_round, "matches": []})
         self._pairings = self.tour._get_pairs()
@@ -213,8 +198,6 @@ class TournamentSM:
     @property
     def leaderboard(self) -> list[Player]:
         return self.tour.get_liderboard()
-
-    # -------- внутренний цикл --------
 
     def _step(self):
         """Продвигает автомат без ввода, пока возможно. Останавливается на ожидании."""
@@ -279,26 +262,20 @@ class TournamentSM:
 
     def _process_pair(self):
         pair = self._pairings[self._pair_idx]
-        white_id, black_id = pair["white_id"], pair["black_id"]
+        w, b = pair["white_id"], pair["black_id"]
+        wr = next(r["roll"] for r in self._pair_rolls if r["id"] == w)
+        br = next(r["roll"] for r in self._pair_rolls if r["id"] == b)
 
-        white_roll = next(r["roll"] for r in self._pair_rolls if r["id"] == white_id)
-        black_roll = next(r["roll"] for r in self._pair_rolls if r["id"] == black_id)
+        if wr > br:   ws, bs = 1, 0
+        elif wr < br: ws, bs = 0, 1
+        else:         ws, bs = 0.5, 0.5
 
-        if white_roll > black_roll:
-            ws, bs = 1, 0
-        elif white_roll < black_roll:
-            ws, bs = 0, 1
-        else:
-            ws, bs = 0.5, 0.5
+        sw, sb = self.tour.scores[w], self.tour.scores[b]
+        if sw > sb:   float_ = ("down", "up")
+        elif sw < sb: float_ = ("up", "down")
+        else:         float_ = ("none", "none")
 
-        if self.tour.scores[white_id] > self.tour.scores[black_id]:
-            float_ = ("down", "up")
-        elif self.tour.scores[white_id] < self.tour.scores[black_id]:
-            float_ = ("up", "down")
-        else:
-            float_ = ("none", "none")
-
-        self.tour._save_round(white_id, black_id, (ws, bs), float_, (white_roll, black_roll))
+        self.tour._save_round(w, b, (ws, bs), float_, (wr, br))
         self._pair_idx += 1
         self._pair_rolls = []
 
@@ -311,83 +288,3 @@ class TournamentSM:
         else:
             self.state = self.ROUND_COMPLETE
             self.prompt = f"Раунд {self.tour.curr_round} завершён"
-
-
-# ---------- Генератор «бомжей» (без изменений) ----------
-
-class Gen_Tour_Table:
-    def __init__(self, num_players):
-        self.num_players = num_players
-
-    def gen(self):
-        alf = list('qwertyuiopasdfghjklzxcvbnm')
-        return [
-            NPC_Player("".join(choices(alf, k=4)), d6(False), d6(False), rd(0, 2), rd(0, 1))
-            for _ in range(self.num_players)
-        ]
-
-
-# ---------- Консольный драйвер (для проверки SM) ----------
-
-class ConsoleDriver:
-    def __init__(self, sm: TournamentSM):
-        self.sm = sm
-
-    def run(self):
-        print("Игроки:")
-        for p in self.sm.tour.players.values():
-            print(f"  {p.full_info()}")
-        print()
-
-        while True:
-            self.sm.start_round()
-            self._resolve()
-
-            if self.sm.state == self.sm.TOURNAMENT_DONE:
-                break
-
-            print(self.sm.prompt)
-            for p in self.sm.leaderboard:
-                print(f"  {p} — {self.sm.tour.scores[p.id]}")
-            print()
-
-        print("Финальный лидерборд:")
-        for p in self.sm.leaderboard:
-            print(f"  {p} — {self.sm.tour.scores[p.id]}")
-
-    def _resolve(self):
-        while self.sm.state in (self.sm.WAITING_PC_ROLL, self.sm.WAITING_REROLL):
-            if self.sm.state == self.sm.WAITING_PC_ROLL:
-                print(self.sm.prompt)
-                while True:
-                    inp = input("> ")
-                    if inp.isdecimal():
-                        self.sm.submit_pc_roll(int(inp))
-                        break
-            else:
-                print(self.sm.prompt)
-                while True:
-                    inp = input("(y/n) > ").lower().replace(" ", "")
-                    if inp in ("yes", "y", "да", "д"):
-                        self.sm.submit_reroll(True)
-                        break
-                    if inp in ("no", "n", "нет", "н"):
-                        self.sm.submit_reroll(False)
-                        break
-
-        if self.sm.last_round_result:
-            print(f"\n=== Раунд {self.sm.last_round_result['round']} ===")
-            for m in self.sm.last_round_result["matches"]:
-                if m["black_id"] is None:
-                    print(f"  {self.sm.tour.players[m['white_id']]} — bye")
-                else:
-                    w = self.sm.tour.players[m["white_id"]]
-                    b = self.sm.tour.players[m["black_id"]]
-                    print(f"  {w} vs {b} — {m['result']} (броски: {m['throws']})")
-
-
-if __name__ == "__main__":
-    players = Gen_Tour_Table(7).gen()
-    # добавим одного живого игрока для теста
-    players.append(PC_Player("HUMAN", 3, 1))
-    ConsoleDriver(TournamentSM(players)).run()

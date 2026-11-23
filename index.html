@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Турнир d6</title>
+    <link rel="stylesheet" href="https://pyscript.net/releases/2026.3.1/core.css">
+    <script type="module" src="https://pyscript.net/releases/2026.3.1/core.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 860px; margin: 2rem auto; }
+        .hidden { display: none; }
+        .panel { border: 1px solid #ccc; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+        .match { margin: 0.5rem 0; padding: 0.5rem; background: #f5f5f5; }
+    </style>
+</head>
+<body>
+<h1>Турнир d6</h1>
+
+<div id="panel-start" class="panel">
+    <ul id="player-list"></ul>
+    <button id="btn-start">Начать раунд</button>
+</div>
+
+<div id="panel-pc-roll" class="panel hidden">
+    <p id="pc-roll-prompt"></p>
+    <input type="number" id="pc-roll-input" />
+    <button id="btn-submit-roll">Подтвердить</button>
+</div>
+
+<div id="panel-reroll" class="panel hidden">
+    <p id="reroll-prompt"></p>
+    <button id="btn-reroll-yes">Перебросить</button>
+    <button id="btn-reroll-no">Оставить</button>
+</div>
+
+<div id="panel-round-done" class="panel hidden">
+    <p id="round-done-prompt"></p>
+    <button id="btn-next-round">Следующий раунд</button>
+</div>
+
+<div class="panel">
+    <h2>Лидерборд</h2>
+    <ol id="leaderboard"></ol>
+</div>
+
+<div class="panel">
+    <h2>История</h2>
+    <div id="history"></div>
+</div>
+
+<script type="py" src="./main.py" config="./pyscript.toml"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+name = "Dragon's Cards"
+packages = ["caissify-pairings"]
+
+
+[files]
+"engine.py" = "./engine.py"
