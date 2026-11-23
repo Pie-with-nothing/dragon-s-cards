@@ -30,7 +30,7 @@ class Player:
         self.name = name
         self.dice_pull = dice_pull
         self.modif = modif
-        self.reroll = reroll
+        self.reroll = min(reroll, 2)
         self.advantage = advantage
         self.is_human = is_human
         self._avg_sum = self._comp_avg_sum()
@@ -49,7 +49,7 @@ class Player:
 
     def full_info(self):
         pc = "PC" if self.is_human else "NPC"
-        ret = f"{self.id}: {self.name} ({pc}) - {self.dice_pull}d6+{self.modif}"
+        ret = f"{self.name} ({pc}) - {self.dice_pull}d6+{self.modif}"
         ur = f", {self.reroll} переброс(а)" if self.reroll else ""
         n = f", преимущество" if self.advantage else ""
         return f"{ret}{ur}{n}"

@@ -2,22 +2,58 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Турнир d6</title>
+    <title>Драконьи карты</title>
     <link rel="stylesheet" href="https://pyscript.net/releases/2026.3.1/core.css">
     <script type="module" src="https://pyscript.net/releases/2026.3.1/core.js"></script>
     <style>
-        body { font-family: sans-serif; max-width: 860px; margin: 2rem auto; }
+        html {
+            /* #2b1d14 — запасной цвет, если картинка не загрузится */
+            background: url("./photo_2026-08-07_21-03-06.jpg") center / cover no-repeat fixed;
+            min-height: 100%;
+        }
+        
+        /* Контентная колонка */
+        body {
+            font-family: sans-serif;
+            max-width: 860px;
+            margin: 0 auto;           /* центрируем */
+            padding: 2rem 1rem;       /* отступы вместо margin, чтобы работало на узких экранах */
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        
+        /* Контраст заголовка над фото */
+        h1 {
+            color: #fff;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+        }
         .hidden { display: none; }
-        .panel { border: 1px solid #ccc; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
-        .match { margin: 0.5rem 0; padding: 0.5rem; background: #f5f5f5; }
+        .panel { border: 1px solid #ccc; border-radius: 8px; padding: 1rem; margin: 1rem 0; background: rgba(255, 255, 255, 0.57);}
+        .match { margin: 0.5rem 0; padding: 0.5rem; background: rgba(255, 255, 255, 0.57); }
+        .player-form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+        .player-form input[type="text"]   { width: 8rem; }
+        .player-form input[type="number"] { width: 4rem; }
+        .player-remove { margin-left: 0.5rem; color: #c00; }
     </style>
 </head>
 <body>
-<h1>Турнир d6</h1>
+<h1>Драконьи карты</h1>
 
-<div id="panel-start" class="panel">
-    <ul id="player-list"></ul>
-    <button id="btn-start">Начать раунд</button>
+<!-- Панель создания игроков -->
+<div id="panel-setup" class="panel">
+    <h2>Создание игроков</h2>
+    <div class="player-form">
+        <input type="text"   id="inp-name"   placeholder="Имя" />
+        <label>Кубы:     <input type="number" id="inp-dice"   value="1" min="1" /></label>
+        <label>Мод:      <input type="number" id="inp-modif"  value="0" /></label>
+        <label>Рероллы:  <input type="number" id="inp-reroll" value="0" min="0" max="2"/></label>
+        <label><input type="checkbox" id="inp-adv" />   Преимущество</label>
+        <label><input type="checkbox" id="inp-human" /> PC</label>
+        <button id="btn-add-player">Добавить</button>
+    </div>
+    <ol id="player-list"></ol>
+    <button id="btn-clear-players">Сбросить всех</button>
+    <button id="btn-start-tournament" disabled>Начать турнир</button>
 </div>
 
 <div id="panel-pc-roll" class="panel hidden">

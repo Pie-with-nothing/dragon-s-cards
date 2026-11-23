@@ -4,3 +4,4 @@ packages = ["caissify-pairings"]
 
 [files]
 "engine.py" = "./engine.py"
+"photo_2026-08-07_21-03-06.jpg" = "./photo_2026-08-07_21-03-06.jpg"
