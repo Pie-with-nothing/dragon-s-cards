@@ -112,23 +112,33 @@ class Tour_Table:
             ],
         })
 
+    def _iter_on_eq_score(self, eq_score: dict[int, float]):
+        if len(eq_score) > 1:
+            for eq_score_i in eq_score:
+                for pair in self.prev_pairs:
+                    if eq_score_i in pair:
+                        opp_id = pair[0] if pair.index(eq_score_i) else pair[1]
+                        eq_score[eq_score_i] += float(f'{self.scores[opp_id]:.1f}')
+                        
+            for koef, score_i in enumerate(
+                                    sorted(
+                                        eq_score.items(), 
+                                        key=lambda x: (x[1], -self.players[x[0]]._avg_sum)
+                                    )
+                                ):
+                self.scores[score_i[0]] += koef * 0.001
+
     def _buchgolc(self):
         curr_score = -1
         eq_score = {}
         for i in sorted(self.scores.items(), key=lambda x: x[1]):
             if i[1] > curr_score:
                 curr_score = i[1]
-                if len(eq_score) > 1:
-                    for eq_score_i in eq_score:
-                        for pair in self.prev_pairs:
-                            if eq_score_i in pair:
-                                opp_id = pair[0] if pair.index(eq_score_i) else pair[1]
-                                eq_score[eq_score_i] += self.scores[opp_id]
-                    for koef, score_i in enumerate(sorted(eq_score.items(), key=lambda x: x[1])):
-                        self.scores[score_i[0]] += koef * 0.001
+                self._iter_on_eq_score(eq_score)
                 eq_score = {i[0]: 0}
             else:
                 eq_score[i[0]] = 0
+        self._iter_on_eq_score(eq_score)
 
     def tie_break(self):
         if not self.is_going():
