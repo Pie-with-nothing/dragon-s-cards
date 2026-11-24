@@ -9,18 +9,6 @@ sm: TournamentSM | None = None
 
 # ==================== Setup ====================
 
-def _fmt_player(p: Player) -> str:
-    parts = [f"{p.name}: {p.dice_pull}d6"]
-    if p.modif:
-        parts.append(f"{p.modif:+d}")
-    if p.reroll:
-        parts.append(f"реролл×{p.reroll}")
-    if p.advantage:
-        parts.append("преим.")
-    parts.append("[PC]" if p.is_human else "[NPC]")
-    return " ".join(parts)
-
-
 def render_setup():
     pl = page["player-list"]
     pl.innerHTML = ""
@@ -39,16 +27,23 @@ def on_add_player(event):
     name = page["inp-name"].value.strip() or f"Player{len(setup_players) + 1}"
     try:
         dice   = int(page["inp-dice"].value)
-        modif  = int(page["inp-modif"].value or 0)
-        reroll = int(page["inp-reroll"].value or 0)
+        modif  = int(page["inp-modif"].value)
+        reroll = int(page["inp-reroll"].value)
     except ValueError:
         return
     advantage = page["inp-adv"].checked
     is_human  = page["inp-human"].checked
 
-    setup_players.append(
-        Player(name, dice, modif, reroll, advantage, is_human=is_human)
-    )
+    try:
+        pl = Player(name, dice, modif, reroll, advantage, is_human=is_human)
+    except ValueError:
+        page["inp-dice"].style["background-color"] = "#FF604A"
+        page["inp-reroll"].style["background-color"] = "#FF604A"
+        return
+    page["inp-dice"].style["background-color"] = "#FFFFFF"
+    page["inp-reroll"].style["background-color"] = "#FFFFFF"
+    
+    setup_players.append(pl)
     page["inp-name"].value = ""           # удобно вводить следующего
     render_setup()
 

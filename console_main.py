@@ -4,9 +4,9 @@ from engine import TournamentSM, Player, d6
 
 def make_players(n_npc=7):
     alf = list("qwertyuiopasdfghjklzxcvbnm")
-    npcs = [Player("".join(choices(alf, k=4)), d6(False), d6(False), rd(0, 2), rd(0, 1))
+    npcs = [Player("".join(choices(alf, k=4)), d6(False), rd(-2, 6), rd(0, 2), rd(0, 1))
             for _ in range(n_npc)]
-    return npcs + [Player("HUMAN", 3, 1, is_human=True)]
+    return npcs + [Player("HUMAN", 3, -1, is_human=True)]
 
 
 def resolve(sm):
@@ -45,13 +45,14 @@ def show_round(sm):
 
 def show_leaderboard(sm):
     for p in sm.leaderboard:
-        print(f"  {p.name}: {sm.tour.scores[p.id]:.3f}")
+        print(f"  {p.full_info()}:\t{sm.tour.scores[p.id]:.3f}")
 
 
 def run(sm):
     print("Игроки:")
     for p in sm.tour.players.values():
-        print(f"  {p.name} ({'PC' if p.is_human else 'NPC'})")
+        print(f'  {p.full_info()}')
+    print()
 
     while True:
         sm.start_round()

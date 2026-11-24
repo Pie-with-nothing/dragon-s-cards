@@ -23,8 +23,8 @@ class Player:
     def __init__(self, name: str, dice_pull: int, modif: int, reroll=0, advantage=False, is_human=False):
         if dice_pull <= 0:
             raise ValueError("dice_pull must be positive")
-        if reroll and modif < 0:
-            raise ValueError("reroll and modif cannot be negative")
+        if reroll < 0:
+            raise ValueError("reroll cannot be negative")
         self.id = Player._id_counter
         Player._id_counter += 1
         self.name = name
@@ -49,7 +49,9 @@ class Player:
 
     def full_info(self):
         pc = "PC" if self.is_human else "NPC"
-        ret = f"{self.name} ({pc}) - {self.dice_pull}d6+{self.modif}"
+        mod_sign = "" if self.modif < 0 else "+"
+        
+        ret = f"{self.name} ({pc}) - {self.dice_pull}d6{mod_sign}{self.modif}"
         ur = f", {self.reroll} переброс(а)" if self.reroll else ""
         n = f", преимущество" if self.advantage else ""
         return f"{ret}{ur}{n}"
@@ -290,8 +292,8 @@ class TournamentSM:
             self.prompt = f"Раунд {self.tour.curr_round} завершён"
             
 
-#TODO try except
-#TODO отрицательные модификаторы
+#TODO try except +
+#TODO отрицательные модификаторы +
 #TODO тайбрейкер на тайбрейкер
 #TODO генератор бомжей
 #TODO оффлайн билд
