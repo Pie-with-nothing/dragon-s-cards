@@ -108,6 +108,7 @@
             gap: 0.5rem;
             margin-top: 1.5rem;
         }
+        input[type="file"].hidden { display: none; }
     </style>
 </head>
 <body>
@@ -193,21 +194,18 @@
             <label><input type="radio" name="cfg-dist" id="cfg-dist-normal"  value="normal" /> Нормальное</label>
         </div>
 
-        <h3>Путь сохранения</h3>
+        <h3>Файл конфигурации</h3>
         <div class="config-row">
-            <label>Ключ конфига:</label>
-            <input type="text" id="cfg-save-path" value="default" />
-            <button id="btn-config-load">Загрузить</button>
+            <label>Имя файла:</label>
+            <input type="text" id="cfg-filename" value="dragon_config.json" />
         </div>
-        <p class="hint">
-            Конфиг хранится в localStorage под ключом
-            <code>dragon_config_&lt;ключ&gt;</code>. Текущий конфиг автоматически
-            загружается при старте.
-        </p>
-
+        <div class="config-row">
+            <button id="btn-config-load">Загрузить из файла…</button>
+            <input type="file" id="cfg-file-input" accept=".json,application/json" class="hidden" />
+        </div>
         <div class="modal-actions">
             <button id="btn-config-cancel">Отмена</button>
-            <button id="btn-config-save">Сохранить</button>
+            <button id="btn-config-save">Сохранить и скачать</button>
         </div>
     </div>
 </div>

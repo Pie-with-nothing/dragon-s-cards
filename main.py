@@ -2,10 +2,9 @@ from pyscript import when
 from pyscript.web import page, div, li, button
 
 from config import (
-    CONFIG_DEFAULTS, CURRENT_KEY, NAMED_PREFIX,
-    make_browser_store, load_current, save_current,
-    load_named, save_named, generate_npc, normalize,
-)
+    generate_npc, normalize, CONFIG_DEFAULTS,
+    download_json, from_json_str
+    )
 
 from engine import TournamentSM, Player
 
@@ -14,8 +13,7 @@ from engine import TournamentSM, Player
 setup_players: list[Player] = []
 sm: TournamentSM | None = None
 
-_store = make_browser_store()
-config = load_current(_store)
+config = dict(CONFIG_DEFAULTS)
 
 
 def _read_config_from_dom() -> dict:
@@ -28,7 +26,6 @@ def _read_config_from_dom() -> dict:
         "reroll_max": int(page["cfg-reroll-max"].value),
         "adv_chance": int(page["cfg-adv-chance"].value),
         "distribution": "normal" if page["cfg-dist-normal"]._dom_element.checked else "uniform",
-        "save_path": page["cfg-save-path"].value.strip() or "default",
     }
 
 
@@ -44,7 +41,6 @@ def _write_config_to_dom(cfg: dict):
         page["cfg-dist-normal"]._dom_element.checked = True
     else:
         page["cfg-dist-uniform"]._dom_element.checked = True
-    page["cfg-save-path"].value = cfg["save_path"]
 
 
 def show_config_modal(visible: bool):
@@ -73,25 +69,41 @@ def on_config_save(event):
         cfg = _read_config_from_dom()
     except ValueError:
         return
-    if cfg["dice_min"] < 1 or cfg["dice_max"] < 1:
+    if cfg["dice_min"] < 1 or cfg["dice_max"] < 1 or cfg["dice_max"] < cfg["dice_min"]:
         return
     if cfg["reroll_min"] < 0 or cfg["reroll_max"] > 2 or cfg["reroll_max"] < cfg["reroll_min"]:
         return
-    config = normalize(cfg)                # защита от того, что пришло из DOM
-    save_current(_store, config)
-    save_named(_store, config["save_path"], config)
+    if cfg["adv_chance"] < 1 or cfg["adv_chance"] > 100:
+        return
+
+    config = normalize(cfg)
+    filename = page["cfg-filename"].value.strip() or "dragon_config.json"
+    download_json(config, filename)
     show_config_modal(False)
 
 
 @when("click", "#btn-config-load")
-def on_config_load(event):
+def on_config_load_click(event):
+    # Программный клик по скрытому <input type="file"> — открывает диалог выбора
+    page["cfg-file-input"]._dom_element.click()
+
+
+@when("change", "#cfg-file-input")
+async def on_file_selected(event):
     global config
-    path = page["cfg-save-path"].value.strip() or "default"
-    cfg = load_named(_store, path)
-    if cfg is not None:
-        config = cfg
+    input_el = page["cfg-file-input"]._dom_element
+    files = input_el.files
+    if files.length == 0:
+        return
+    file = files.item(0)
+    try:
+        text = await file.text()
+        config = from_json_str(str(text))
         _write_config_to_dom(config)
-        
+    except Exception as e:
+        page["cfg-filename"].value = f"Ошибка: {e}"
+    finally:
+        input_el.value = ""   # позволяет выбрать тот же файл повторно
 
 # ==================== Setup ====================
 

@@ -1,13 +1,9 @@
 from random import choices, randint as rd
 from engine import TournamentSM, Player, d6
 
-from config import (
-    CONFIG_DEFAULTS, CURRENT_KEY, NAMED_PREFIX,
-    DictStore, load_current, save_current,
-    load_named, save_named, generate_npc, normalize,
-)
+from config import CONFIG_DEFAULTS, generate_npc
 
-config = load_current(DictStore())
+config = CONFIG_DEFAULTS
 
 def make_players(n_npc=7):
     npcs = [generate_npc(config) for _ in range(n_npc)]

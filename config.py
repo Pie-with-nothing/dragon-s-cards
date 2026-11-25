@@ -13,47 +13,7 @@ CONFIG_DEFAULTS = {
     "save_path": "default",
 }
 
-CURRENT_KEY = "dragon_config_current"
-NAMED_PREFIX = "dragon_config_"
-
-
-# ==================== Storage ====================
-
-class BrowserStore:
-    """Обёртка над localStorage. Импортирует js только при инстансе."""
-    def __init__(self):
-        from js import localStorage
-        self._ls = localStorage
-
-    def get(self, key):
-        v = self._ls.getItem(key)
-        return None if v is None else str(v)
-
-    def set(self, key, value):
-        self._ls.setItem(key, value)
-
-
-class DictStore:
-    """In-memory store — для тестов и консоли."""
-    def __init__(self, initial=None):
-        self.data = dict(initial or {})
-
-    def get(self, key):
-        return self.data.get(key)
-
-    def set(self, key, value):
-        self.data[key] = value
-
-
-def make_browser_store():
-    """Вернёт BrowserStore или None, если localStorage недоступен."""
-    try:
-        return BrowserStore()
-    except Exception:
-        return None
-
-
-# ==================== Load / save ====================
+# ==================== Serialize ====================
 
 def normalize(data: dict) -> dict:
     """Сливает с дефолтами и клампит значения в допустимые диапазоны."""
@@ -74,40 +34,34 @@ def normalize(data: dict) -> dict:
     return cfg
 
 
-def load_current(store) -> dict:
-    if store is None:
-        return dict(CONFIG_DEFAULTS)
-    raw = store.get(CURRENT_KEY)
-    if not raw:
-        return dict(CONFIG_DEFAULTS)
-    try:
-        return normalize(json.loads(raw))
-    except Exception:
-        return dict(CONFIG_DEFAULTS)
+def to_json_str(cfg: dict) -> str:
+    return json.dumps(normalize(cfg), ensure_ascii=False, indent=2)
 
 
-def save_current(store, cfg: dict):
-    if store is None:
-        return
-    store.set(CURRENT_KEY, json.dumps(cfg, ensure_ascii=False))
+def from_json_str(raw: str) -> dict:
+    return normalize(json.loads(raw))
 
 
-def load_named(store, path: str) -> dict | None:
-    if store is None:
-        return None
-    raw = store.get(NAMED_PREFIX + path)
-    if not raw:
-        return None
-    try:
-        return normalize(json.loads(raw))
-    except Exception:
-        return None
+# ==================== Download (browser) ====================
 
+def download_json(cfg: dict, filename: str):
+    """Инициирует скачивание файла в браузере. Только для PyScript."""
+    from js import Blob, URL, document
 
-def save_named(store, path: str, cfg: dict):
-    if store is None:
-        return
-    store.set(NAMED_PREFIX + path, json.dumps(cfg, ensure_ascii=False))
+    if not filename.lower().endswith(".json"):
+        filename += ".json"
+
+    content = to_json_str(cfg)
+    blob = Blob.new([content], {"type": "application/json"})
+    url = URL.createObjectURL(blob)
+
+    a = document.createElement("a")
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
 
 
 # ==================== Generation ====================
