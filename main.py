@@ -1,11 +1,97 @@
 from pyscript import when
 from pyscript.web import page, div, li, button
+
+from config import (
+    CONFIG_DEFAULTS, CURRENT_KEY, NAMED_PREFIX,
+    make_browser_store, load_current, save_current,
+    load_named, save_named, generate_npc, normalize,
+)
+
 from engine import TournamentSM, Player
+
 
 
 setup_players: list[Player] = []
 sm: TournamentSM | None = None
 
+_store = make_browser_store()
+config = load_current(_store)
+
+
+def _read_config_from_dom() -> dict:
+    return {
+        "dice_min": int(page["cfg-dice-min"].value),
+        "dice_max": int(page["cfg-dice-max"].value),
+        "modif_min": int(page["cfg-modif-min"].value),
+        "modif_max": int(page["cfg-modif-max"].value),
+        "reroll_min": int(page["cfg-reroll-min"].value),
+        "reroll_max": int(page["cfg-reroll-max"].value),
+        "adv_chance": int(page["cfg-adv-chance"].value),
+        "distribution": "normal" if page["cfg-dist-normal"]._dom_element.checked else "uniform",
+        "save_path": page["cfg-save-path"].value.strip() or "default",
+    }
+
+
+def _write_config_to_dom(cfg: dict):
+    page["cfg-dice-min"].value = cfg["dice_min"]
+    page["cfg-dice-max"].value = cfg["dice_max"]
+    page["cfg-modif-min"].value = cfg["modif_min"]
+    page["cfg-modif-max"].value = cfg["modif_max"]
+    page["cfg-reroll-min"].value = cfg["reroll_min"]
+    page["cfg-reroll-max"].value = cfg["reroll_max"]
+    page["cfg-adv-chance"].value = cfg["adv_chance"]
+    if cfg["distribution"] == "normal":
+        page["cfg-dist-normal"]._dom_element.checked = True
+    else:
+        page["cfg-dist-uniform"]._dom_element.checked = True
+    page["cfg-save-path"].value = cfg["save_path"]
+
+
+def show_config_modal(visible: bool):
+    el = page["config-modal"]
+    if visible:
+        _write_config_to_dom(config)
+        el.classes.remove("hidden")
+    else:
+        el.classes.add("hidden")
+
+
+@when("click", "#btn-open-config")
+def on_open_config(event):
+    show_config_modal(True)
+
+
+@when("click", "#btn-config-cancel")
+def on_config_cancel(event):
+    show_config_modal(False)
+
+
+@when("click", "#btn-config-save")
+def on_config_save(event):
+    global config
+    try:
+        cfg = _read_config_from_dom()
+    except ValueError:
+        return
+    if cfg["dice_min"] < 1 or cfg["dice_max"] < 1:
+        return
+    if cfg["reroll_min"] < 0 or cfg["reroll_max"] > 2 or cfg["reroll_max"] < cfg["reroll_min"]:
+        return
+    config = normalize(cfg)                # защита от того, что пришло из DOM
+    save_current(_store, config)
+    save_named(_store, config["save_path"], config)
+    show_config_modal(False)
+
+
+@when("click", "#btn-config-load")
+def on_config_load(event):
+    global config
+    path = page["cfg-save-path"].value.strip() or "default"
+    cfg = load_named(_store, path)
+    if cfg is not None:
+        config = cfg
+        _write_config_to_dom(config)
+        
 
 # ==================== Setup ====================
 
@@ -37,11 +123,7 @@ def on_add_player(event):
     try:
         pl = Player(name, dice, modif, reroll, advantage, is_human=is_human)
     except ValueError:
-        page["inp-dice"].style["background-color"] = "#FF604A"
-        page["inp-reroll"].style["background-color"] = "#FF604A"
         return
-    page["inp-dice"].style["background-color"] = "#FFFFFF"
-    page["inp-reroll"].style["background-color"] = "#FFFFFF"
     
     setup_players.append(pl)
     page["inp-name"].value = ""           # удобно вводить следующего
@@ -62,6 +144,18 @@ def on_player_list_click(event):
         setup_players.pop(int(tgt.dataset.idx))
         render_setup()
 
+@when("click", "#btn-generate-npc")
+def on_generate_npc(event):
+    npc = generate_npc(config)
+    
+    page["inp-name"].value = npc.name
+    page["inp-dice"].value = npc.dice_pull
+    page["inp-modif"].value = npc.modif
+    page["inp-reroll"].value = npc.reroll
+    page["inp-adv"].checked = npc.advantage
+    page["inp-human"].checked = npc.is_human
+    
+    render_setup()
 
 @when("click", "#btn-start-tournament")
 def on_start(event):

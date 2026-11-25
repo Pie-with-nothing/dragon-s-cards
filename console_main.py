@@ -1,12 +1,17 @@
 from random import choices, randint as rd
 from engine import TournamentSM, Player, d6
 
+from config import (
+    CONFIG_DEFAULTS, CURRENT_KEY, NAMED_PREFIX,
+    DictStore, load_current, save_current,
+    load_named, save_named, generate_npc, normalize,
+)
+
+config = load_current(DictStore())
 
 def make_players(n_npc=7):
-    alf = list("qwertyuiopasdfghjklzxcvbnm")
-    npcs = [Player("".join(choices(alf, k=4)), d6(False), rd(-2, 6), rd(0, 2), rd(0, 1))
-            for _ in range(n_npc)]
-    return npcs + [Player("HUMAN", 3, -1, is_human=True)]
+    npcs = [generate_npc(config) for _ in range(n_npc)]
+    return npcs + [Player("HUMAN", 3, -1, is_human=False)]
 
 
 def resolve(sm):
@@ -45,7 +50,7 @@ def show_round(sm):
 
 def show_leaderboard(sm):
     for p in sm.leaderboard:
-        print(f"  {p.full_info()}:\t{sm.tour.scores[p.id]:.3f}")
+        print(f"  {p.full_info()}:\t{sm.tour.scores[p.id]}")
 
 
 def run(sm):
@@ -57,10 +62,10 @@ def run(sm):
     while True:
         sm.start_round()
         resolve(sm)
+        show_round(sm)
         if sm.state == TournamentSM.TOURNAMENT_DONE:
             print(sm.prompt)
             break
-        show_round(sm)
         print("\nЛидерборд:")
         show_leaderboard(sm)
         print()
