@@ -126,6 +126,8 @@ def on_config_save(event):
         errors.append(("cfg-dice-max", "Максимум кубов должен быть ≥ 1"))
     if cfg["dice_max"] < cfg["dice_min"]:
         errors.append(("cfg-dice-max", "Максимум кубов не может быть меньше минимума"))
+    if cfg["modif_max"] < cfg["modif_min"]:
+        errors.append(("cfg-modif-max", "Максимум модификатора не может быть меньше минимума"))
     if cfg["reroll_min"] < 0:
         errors.append(("cfg-reroll-min", "Минимум рероллов не может быть < 0"))
     if cfg["reroll_max"] > 2:
@@ -206,13 +208,20 @@ def on_add_player(event):
         notify("Кубы, модификатор и рероллы должны быть числами", "error")
         return
 
+    err = []
     if dice < 1:
-        mark_invalid("inp-dice")
-        notify("Количество кубов должно быть ≥ 1", "error")
-        return
+        err.append(("inp-dice", "Количество кубов должно быть ≥ 1"))
     if reroll < 0 or reroll > 2:
-        mark_invalid("inp-reroll")
-        notify("Рероллы: от 0 до 2", "error")
+        err.append(("inp-reroll", "Рероллы: от 0 до 2"))
+
+    if err:
+        for fid, _ in err:
+            mark_invalid(fid)
+        first_msg = err[0][1]
+        if len(err) > 1:
+            notify(f"{first_msg} (и ещё {len(err) - 1})", "error")
+        else:
+            notify(first_msg, "error")
         return
 
     advantage = page["inp-adv"].checked
