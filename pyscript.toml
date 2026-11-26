@@ -1,5 +1,5 @@
 name = "Dragon's Cards"
-packages = ["caissify-pairings"]
+packages = ["caissify-pairings", "numpy"]
 
 
 [files]

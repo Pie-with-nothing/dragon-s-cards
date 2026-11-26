@@ -1,6 +1,7 @@
 import json
-from random import randint as rd, random, gauss, choices
-
+from random import randint as rd, random, choices, choice, Random
+import math
+import numpy as np
 from engine import Player
 
 
@@ -9,8 +10,7 @@ CONFIG_DEFAULTS = {
     "modif_min": -1, "modif_max": 2,
     "reroll_min": 0, "reroll_max": 2,
     "adv_chance": 30,
-    "distribution": "uniform",
-    "save_path": "default",
+    "distribution": "uniform"
 }
 
 # ==================== Serialize ====================
@@ -26,9 +26,8 @@ def normalize(data: dict) -> dict:
         cfg["reroll_min"] = max(0, min(2, int(cfg["reroll_min"])))
         cfg["reroll_max"] = max(cfg["reroll_min"], min(2, int(cfg["reroll_max"])))
         cfg["adv_chance"] = max(0, min(100, int(cfg["adv_chance"])))
-        if cfg["distribution"] not in ("uniform", "normal"):
+        if cfg["distribution"] not in ("uniform", "logit_normal"):
             cfg["distribution"] = "uniform"
-        cfg["save_path"] = str(cfg["save_path"]).strip() or "default"
     except (TypeError, ValueError):
         return dict(CONFIG_DEFAULTS)
     return cfg
@@ -65,17 +64,46 @@ def download_json(cfg: dict, filename: str):
 
 
 # ==================== Generation ====================
+def _sigmoid(z: float) -> float:
+    """Численно устойчивая сигмоида: 1 / (1 + exp(-z))."""
+    if z >= 0:
+        return 1.0 / (1.0 + math.exp(-z))
+    e = math.exp(z)          # z < 0, значит exp(z) ∈ (0, 1] — без переполнения
+    return e / (1.0 + e)
+
+
+def generate_logit_normal(min_val: float, max_val: float,
+                          n: int = 10000,
+                          mu: float = -2.5,
+                          sigma: float = 1.5) -> list[float]:
+    """
+    mu < 0         — масса у нижней границы (много слабых)
+    sigma большая  — более тяжёлый хвост к верхней границе
+    """
+    rng = Random()  # локальный ГПСЧ; можно передать seed=rng для воспроизводимости
+    span = max_val - min_val
+    return [
+        min_val + span * _sigmoid(rng.gauss(mu, sigma))
+        for _ in range(n)
+    ]
+
+def np_generate_logit_normal(min_val, max_val):
+    """
+    mu < 0     — масса у нижней границы (много слабых)
+    sigma большая — более тяжёлый хвост к верхней границе
+    """
+    z = np.random.normal(-2.5, 1.5, 10000)
+    u = 1.0 / (1.0 + np.exp(-z))               # сигмоида → (0, 1)
+    return min_val + (max_val - min_val) * u
 
 def _rand_int_dist(lo: int, hi: int, distribution: str) -> int:
     if lo > hi:
         lo, hi = hi, lo
     if distribution == "uniform":
         return rd(lo, hi)
-    # нормальное: центр диапазона, sd = четверть ширины
-    mid = (lo + hi) / 2
-    sd = (hi - lo) / 4 if hi > lo else 0.5
-    v = round(gauss(mid, sd))
-    return max(lo, min(hi, v))
+    if distribution == "logit_normal":
+        #return round(choice(generate_logit_normal(lo, hi)))
+        return round(np.random.choice(np_generate_logit_normal(lo, hi)))
 
 
 def generate_npc(config: dict, name: str | None = None) -> Player:

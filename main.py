@@ -66,7 +66,7 @@ def _read_config_from_dom() -> dict:
         "reroll_min": int(page["cfg-reroll-min"].value),
         "reroll_max": int(page["cfg-reroll-max"].value),
         "adv_chance": int(page["cfg-adv-chance"].value),
-        "distribution": "normal" if page["cfg-dist-normal"]._dom_element.checked else "uniform",
+        "distribution": "logit_normal" if page["cfg-dist-normal"]._dom_element.checked else "uniform",
     }
 
 
@@ -78,7 +78,7 @@ def _write_config_to_dom(cfg: dict):
     page["cfg-reroll-min"].value = cfg["reroll_min"]
     page["cfg-reroll-max"].value = cfg["reroll_max"]
     page["cfg-adv-chance"].value = cfg["adv_chance"]
-    if cfg["distribution"] == "normal":
+    if cfg["distribution"] == "logit_normal":
         page["cfg-dist-normal"]._dom_element.checked = True
     else:
         page["cfg-dist-uniform"]._dom_element.checked = True
