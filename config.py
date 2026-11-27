@@ -4,6 +4,9 @@ import math
 import numpy as np
 from engine import Player
 
+from faker import Faker
+from marmel_grammar import MarmelGrammar
+
 
 CONFIG_DEFAULTS = {
     "dice_min": 1, "dice_max": 3,
@@ -106,6 +109,64 @@ def _rand_int_dist(lo: int, hi: int, distribution: str) -> int:
         return round(np.random.choice(np_generate_logit_normal(lo, hi)))
 
 
+def _gen_faker():
+    locales = [
+        "am_ET", "ar_AE", "ar_BH", "ar_EG",
+        "ar_JO", "bg_BG", "bs_BA", "de_LU",
+        "dk_DK", "el_CY", "en", "en_AU",
+        "en_BD", "en_CA", "en_GB", "en_IE",
+        "en_IN", "en_KE", "en_MS", "en_NG",
+        "en_NZ", "en_PH", "en_PK", "en_TH",
+        "en_US", "es_AR", "es_VE", "fil_PH",
+        "fr_DZ", "ha_NG", "id_ID", "ig_NG", 
+        "it_CH", "it_IT", "la", "lb_LU", 
+        "mt_MT", "ng_NG", 
+        "ru_RU", "sq_AL", "sr_BA", "sw",
+        "tl_PH", "tw_GH", "uz_UZ", "yo_NG",
+        "zu_ZA"
+    ]
+
+    trash = [
+        'prof', 'dr', 'md', 'mr', 'ms', 'mrs', 'г-жа', 'г-н', 'pol', 'const',
+        'kh', 'г-ца', 'др', 'hr', 'ii', 'iii', 'dds', 'fr', 'wg', 'cd', 'dvm',
+        'phd', 'rev', 'sis', 'eng', 'pastor', 'cdr', 'maj', 'col', 'lt', 'acm',
+        'sen', 'sgt', 'lac', 'adm', 'pfk', 'sub', 'fs', 'cpl', 'phrapalad', 'palad',
+        'phrakhu', 'l/c', 'jg', 'gen', 'cpo', 'capt', 'amn', 'phrabaidika', 'sea-man',
+        'pfc', 'sqn', 'ldr', 'off', 'flt', 'pvt', 'gp', 'plt', 'am', 'po', 'flg', 'miss'
+    ]
+
+    gram = MarmelGrammar()
+    raw_name = Faker([choice(locales)]).name()
+
+    name = [s for s in raw_name.split() if "." not in s]
+    name = [s for s in name if len(s) > 1 and s.lower() not in trash]
+
+    trans = []
+    for i in name:
+        char = ""
+        if '-' in i and "'" in i or "’" in i:
+            char = "’" if "’" in i else "'"
+            batch = []
+            for bth in [ap.split(char) for ap in i.split('-')]:
+                if len(bth) == 1:
+                    batch.append(gram.transliterate_to_russian(bth[0]))
+                else:
+                    batch.append("'".join([gram.transliterate_to_russian(s) for s in bth]))
+            trans.append('-'.join(batch))
+        elif '-' in i:
+            trans.append('-'.join([gram.transliterate_to_russian(b) for b in i.split('-')]))
+        elif "'" in i or "’" in i:
+            char = "’" if "’" in i else "'"
+            trans.append("'".join([gram.transliterate_to_russian(b) for b in i.split(char)]))
+        else:
+            trans.append(gram.transliterate_to_russian(i))
+        
+    return " ".join(trans)
+
+def gen_name():
+    return _gen_faker()
+
+
 def generate_npc(config: dict, name: str | None = None) -> Player:
     dice = max(1, _rand_int_dist(config["dice_min"], config["dice_max"], config["distribution"]))
     modif = _rand_int_dist(config["modif_min"], config["modif_max"], config["distribution"])
@@ -113,5 +174,5 @@ def generate_npc(config: dict, name: str | None = None) -> Player:
     reroll = max(0, min(2, reroll))
     advantage = random() * 100 < config["adv_chance"]
     if name is None:
-        name = "".join(choices("qwertyuiopasdfghjklzxcvbnm", k=rd(3, 6)))
+        name = gen_name()
     return Player(name, dice, modif, reroll, advantage, is_human=False)

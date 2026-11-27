@@ -3,7 +3,7 @@ from pyscript.web import page, div, li, button
 
 from config import (
     generate_npc, normalize, CONFIG_DEFAULTS,
-    download_json, from_json_str
+    download_json, from_json_str, gen_name
     )
 
 from engine import TournamentSM, Player
@@ -194,7 +194,7 @@ def render_setup():
 
 @when("click", "#btn-add-player")
 def on_add_player(event):
-    name = page["inp-name"].value.strip() or f"Player{len(setup_players) + 1}"
+    name = page["inp-name"].value.strip() or gen_name()
 
     try:
         dice   = int(page["inp-dice"].value)
