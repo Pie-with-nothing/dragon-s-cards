@@ -12,6 +12,51 @@
             min-height: 100%;
         }
         
+        /* ===== Экран загрузки ===== */
+        #loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.55);
+        }
+        #loading-overlay.hidden { display: none; }
+
+        .loading-box {
+            background: rgba(255, 255, 255, 0.96);
+            padding: 2rem 2.5rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            max-width: 90vw;
+            text-shadow: none;              /* внутри белого бокса тень не нужна */
+        }
+        .loading-box h2 {
+            margin: 0 0 0.5rem 0;
+            color: #222;
+            font-size: 1.25rem;
+            text-shadow: none;
+        }
+        .loading-box .hint {
+            margin: 0;
+            color: #666;
+            font-size: 0.9rem;
+            text-shadow: none;
+        }
+        .loading-spinner {
+            width: 42px;
+            height: 42px;
+            border: 4px solid #ddd;
+            border-top-color: #4a90d9;
+            border-radius: 50%;
+            margin: 0 auto 1rem auto;
+            animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
         /* Контентная колонка */
         body {
             font-family: sans-serif;
@@ -28,8 +73,8 @@
             text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
         }
         .hidden { display: none; }
-        .panel { border: 1px solid #ccc; border-radius: 8px; padding: 1rem; margin: 1rem 0; background: rgba(255, 255, 255, 0.57);}
-        .match { margin: 0.5rem 0; padding: 0.5rem; background: rgba(255, 255, 255, 0.57); }
+        .panel { border: 1px solid #ccc; border-radius: 8px; padding: 1rem; margin: 1rem 0; background: rgba(255, 255, 255, 0.80);}
+        .match { margin: 0.5rem 0; padding: 0.5rem; background: rgba(255, 255, 255, 0.80); }
         .player-form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
         .player-form input[type="text"]   { width: 8rem; }
         .player-form input[type="number"] { width: 4rem; }
@@ -160,9 +205,36 @@
             background: #fff5f5 !important;
             outline: none;
         }
+
+        /* Убираем старое мыло */
+        body, p, li, ol, h1, h2, h3, .lb-details, .match,
+        #leaderboard, #player-list, #history {
+            text-shadow:
+                0 1px 0   rgba(112, 0, 78, 0.85),
+        }
+
+        h1, h2, h3 {
+            text-shadow:
+                0 1px 0   rgba(112, 0, 78, 0.9),
+                0 2px 2px rgba(112, 0, 78, 0.35);
+        }
+
+        /* Там, где свой фон — тень не нужна */
+        .modal-content,
+        .modal-content *,
+        button, input, select, textarea {
+            text-shadow: none;
+        }
     </style>
 </head>
 <body>
+<div id="loading-overlay">
+    <div class="loading-box">
+        <div class="loading-spinner"></div>
+        <h2>Идёт загрузка, ожидайте…</h2>
+        <p class="hint">Первый запуск после обновления кэша может занять до минуты</p>
+    </div>
+</div>
 <div class="header-bar">
     <h1>Драконьи карты</h1>
     <button id="btn-open-config" class="gear-btn" title="Настройки">⚙</button>

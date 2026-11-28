@@ -24,6 +24,16 @@ CONFIG_NUMBER_FIELDS = (
     "cfg-reroll-min", "cfg-reroll-max",
     "cfg-adv-chance",
 )
+
+CONFIG_FIELD_PAIRS = {
+    "cfg-dice-min":   "cfg-dice-max",
+    "cfg-dice-max":   "cfg-dice-min",
+    "cfg-modif-min":  "cfg-modif-max",
+    "cfg-modif-max":  "cfg-modif-min",
+    "cfg-reroll-min": "cfg-reroll-max",
+    "cfg-reroll-max": "cfg-reroll-min",
+}
+
 PLAYER_NUMBER_FIELDS = ("inp-dice", "inp-modif", "inp-reroll")
 
 def notify(message: str, kind: str = "error"):
@@ -54,9 +64,13 @@ def on_toast_click(event):
 
 @when("input", "body")
 def on_any_input(event):
-    # Любой ввод снимает подсветку с этого поля — пользователь начал исправлять
+    # Любой ввод снимает подсветку с этого поля — и с парного, если это граница диапазона
     try:
-        event.target.classList.remove("invalid")
+        el = event.target
+        el.classList.remove("invalid")
+        pair_id = CONFIG_FIELD_PAIRS.get(el.id)
+        if pair_id is not None:
+            page[pair_id]._dom_element.classList.remove("invalid")
     except Exception:
         pass
     
@@ -124,25 +138,30 @@ def on_config_save(event):
 
     errors = []
     if cfg["dice_min"] < 1:
-        errors.append(("cfg-dice-min", "Минимум кубов должен быть ≥ 1"))
+        errors.append((("cfg-dice-min",), "Минимум кубов должен быть ≥ 1"))
     if cfg["dice_max"] < 1:
-        errors.append(("cfg-dice-max", "Максимум кубов должен быть ≥ 1"))
+        errors.append((("cfg-dice-max",), "Максимум кубов должен быть ≥ 1"))
     if cfg["dice_max"] < cfg["dice_min"]:
-        errors.append(("cfg-dice-max", "Максимум кубов не может быть меньше минимума"))
+        errors.append((("cfg-dice-max", "cfg-dice-min"), "Максимум кубов не может быть меньше минимума"))
     if cfg["modif_max"] < cfg["modif_min"]:
-        errors.append(("cfg-modif-max", "Максимум модификатора не может быть меньше минимума"))
+        errors.append((("cfg-modif-max", "cfg-modif-min"), "Максимум модификатора не может быть меньше минимума"))
     if cfg["reroll_min"] < 0:
-        errors.append(("cfg-reroll-min", "Минимум рероллов не может быть < 0"))
+        errors.append((("cfg-reroll-min",), "Минимум рероллов не может быть < 0"))
+    if cfg["reroll_min"] > 2:
+        errors.append((("cfg-reroll-min",), "Минимум рероллов не может быть > 2"))
+    if cfg["reroll_max"] < 0:
+        errors.append((("cfg-reroll-max",), "Максимум рероллов не может быть < 0"))
     if cfg["reroll_max"] > 2:
-        errors.append(("cfg-reroll-max", "Максимум рероллов не может быть > 2"))
+        errors.append((("cfg-reroll-max",), "Максимум рероллов не может быть > 2"))
     if cfg["reroll_max"] < cfg["reroll_min"]:
-        errors.append(("cfg-reroll-max", "Максимум рероллов не может быть меньше минимума"))
+        errors.append((("cfg-reroll-max", "cfg-reroll-min"), "Максимум рероллов не может быть меньше минимума"))
     if cfg["adv_chance"] < 0 or cfg["adv_chance"] > 100:
-        errors.append(("cfg-adv-chance", "Шанс преимущества должен быть 0–100%"))
+        errors.append((("cfg-adv-chance",), "Шанс преимущества должен быть 0–100%"))
 
     if errors:
-        for fid, _ in errors:
-            mark_invalid(fid)
+        for fids, _ in errors:
+            for fid in fids:
+                mark_invalid(fid)
         first_msg = errors[0][1]
         if len(errors) > 1:
             notify(f"{first_msg} (и ещё {len(errors) - 1})", "error")
@@ -175,8 +194,12 @@ async def on_file_selected(event):
         text = await file.text()
         config = from_json_str(str(text))
         _write_config_to_dom(config)
+        # Импортированный конфиг всегда валиден — снимаем все следы прошлых ошибок
+        clear_invalid(*CONFIG_NUMBER_FIELDS)
+        hide_toast()
     except Exception as e:
-        page["cfg-filename"].value = f"Ошибка: {e}"
+        # Реальную ошибку чтения/парсинга файла показываем тостом, не трогая #cfg-filename
+        notify(f"Ошибка импорта конфига: {e}", "error")
     finally:
         input_el.value = ""   # позволяет выбрать тот же файл повторно
 
@@ -460,4 +483,11 @@ def on_lb_details(event):
     render_leaderboard()
 # ==================== Старт ====================
 
+def hide_loading():
+    try:
+        page["loading-overlay"]._dom_element.classList.add("hidden")
+    except Exception:
+        pass
+
 render_setup()
+hide_loading()
