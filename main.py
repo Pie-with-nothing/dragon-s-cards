@@ -3,8 +3,9 @@ from pyscript.web import page, div, li, button
 
 from config import (
     generate_npc, normalize, CONFIG_DEFAULTS,
-    download_json, from_json_str, gen_name
-    )
+    download_json, from_json_str, gen_name,
+    download_player_json, player_from_json_str, safe_filename,
+)
 
 from engine import TournamentSM, Player
 
@@ -179,14 +180,53 @@ async def on_file_selected(event):
 
 # ==================== Setup ====================
 
+def _export_player(p: Player):
+    try:
+        download_player_json(p, safe_filename(p.name))
+        notify(f"Экспортирован: {p.name}", "info")
+    except Exception as e:
+        notify(f"Ошибка экспорта: {e}", "error")
+
+
+@when("click", "#btn-import-player")
+def on_import_player_click(event):
+    page["player-file-input"]._dom_element.click()
+
+
+@when("change", "#player-file-input")
+async def on_player_file_selected(event):
+    input_el = page["player-file-input"]._dom_element
+    files = input_el.files
+    if files.length == 0:
+        return
+    file = files.item(0)
+    try:
+        text = await file.text()
+        p = player_from_json_str(str(text))
+        setup_players.append(p)
+        render_setup()
+        notify(f"Импортирован: {p.name}", "info")
+    except Exception as e:
+        notify(f"Ошибка импорта: {e}", "error")
+    finally:
+        input_el.value = ""
+
 def render_setup():
     pl = page["player-list"]
     pl.innerHTML = ""
     for idx, p in enumerate(setup_players):
         item = li()
         item.innerText = p.full_info()
+
+        exp = button("▼", classes=["player-export"])
+        exp._dom_element.title = "Экспорт персонажа"
+        exp.dataset.idx = str(idx)
+
         rm = button("✕", classes=["player-remove"])
-        rm.dataset.idx = str(idx)         # dataset доступен на обёртке
+        rm._dom_element.title = "Удалить персонажа"
+        rm.dataset.idx = str(idx)
+
+        item.append(exp)
         item.append(rm)
         pl.append(item)
     page["btn-start-tournament"].disabled = len(setup_players) < 2
@@ -248,11 +288,16 @@ def on_clear(event):
 
 @when("click", "#player-list")
 def on_player_list_click(event):
-    # Делегирование: слушаем родителя, ловим клики по кнопкам ✕
     tgt = event.target
-    if "player-remove" in tgt.className.split():
+    classes = tgt.className.split()
+
+    if "player-remove" in classes:
         setup_players.pop(int(tgt.dataset.idx))
         render_setup()
+    elif "player-export" in classes:
+        idx = int(tgt.dataset.idx)
+        if 0 <= idx < len(setup_players):
+            _export_player(setup_players[idx])
 
 @when("click", "#btn-generate-npc")
 def on_generate_npc(event):
@@ -309,6 +354,12 @@ def render_tournament():
     for p in sm.leaderboard:
         item = li()
         item.innerText = f"{p.full_info()}: {sm.tour.scores[p.id]:.3f}"
+
+        exp = button("▼", classes=["leaderboard-export"])
+        exp._dom_element.title = "Экспорт персонажа"
+        exp.dataset.pid = str(p.id)
+        item.append(exp)
+
         lb.append(item)
 
     hist = page["history"]
@@ -364,6 +415,18 @@ def on_next_round(event):
     sm.start_round()
     render_tournament()
 
+@when("click", "#leaderboard")
+def on_leaderboard_click(event):
+    tgt = event.target
+    if "leaderboard-export" not in tgt.className.split():
+        return
+    if sm is None:
+        return
+    pid = int(tgt.dataset.pid)
+    p = sm.tour.players.get(pid)
+    if p is None:
+        return
+    _export_player(p)
 
 # ==================== Старт ====================
 

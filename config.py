@@ -65,6 +65,74 @@ def download_json(cfg: dict, filename: str):
     a.remove()
     URL.revokeObjectURL(url)
 
+# ==================== Single character (player) ====================
+
+def player_to_dict(p: Player) -> dict:
+    return {
+        "name": p.name,
+        "dice_pull": p.dice_pull,
+        "modif": p.modif,
+        "reroll": p.reroll,
+        "advantage": p.advantage,
+        "is_human": p.is_human,
+    }
+
+
+def dict_to_player(d) -> Player:
+    if not isinstance(d, dict):
+        raise ValueError("ожидался JSON-объект с полями персонажа")
+
+    raw_name = d.get("name", "")
+    name = str(raw_name).strip() if raw_name is not None else ""
+    if not name:
+        name = gen_name()
+
+    try:
+        dice_pull = int(d.get("dice_pull", 1))
+        modif = int(d.get("modif", 0))
+        reroll = int(d.get("reroll", 0))
+    except (TypeError, ValueError):
+        raise ValueError("dice_pull / modif / reroll должны быть целыми")
+
+    dice_pull = max(1, dice_pull)
+    reroll = max(0, min(2, reroll))
+    advantage = bool(d.get("advantage", False))
+    is_human = bool(d.get("is_human", False))
+
+    return Player(name, dice_pull, modif, reroll, advantage, is_human=is_human)
+
+
+def player_to_json_str(p: Player) -> str:
+    return json.dumps(player_to_dict(p), ensure_ascii=False, indent=2)
+
+
+def player_from_json_str(raw: str) -> Player:
+    return dict_to_player(json.loads(raw))
+
+
+def safe_filename(name: str, fallback: str = "character") -> str:
+    bad = '/\\:*?"<>|'
+    cleaned = "".join("_" if c in bad else c for c in name).strip()
+    return (cleaned or fallback) + ".json"
+
+
+def download_player_json(p: Player, filename: str):
+    from js import Blob, URL, document
+
+    if not filename.lower().endswith(".json"):
+        filename += ".json"
+
+    content = player_to_json_str(p)
+    blob = Blob.new([content], {"type": "application/json"})
+    url = URL.createObjectURL(blob)
+
+    a = document.createElement("a")
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
 
 # ==================== Generation ====================
 def _sigmoid(z: float) -> float:
