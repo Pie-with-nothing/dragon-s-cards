@@ -59,6 +59,15 @@
             cursor: pointer;
         }
         .gear-btn:hover { background: #fff; }
+        /* Шапка внутри панели (лидерборд) */
+        .panel .header-bar h2 { margin: 0; }
+
+        /* Подробные метрики под именем в лидерборде */
+        .lb-details {
+            font-size: 0.9em;
+            color: #444;
+            margin-top: 0.2rem;
+        }
 
         .modal {
             position: fixed;
@@ -200,7 +209,10 @@
 </div>
 
 <div class="panel">
-    <h2>Лидерборд</h2>
+    <div class="header-bar">
+        <h2>Лидерборд</h2>
+        <button id="btn-lb-details" disabled>Подробно</button>
+    </div>
     <ol id="leaderboard"></ol>
 </div>
 

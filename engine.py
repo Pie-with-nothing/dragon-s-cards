@@ -68,6 +68,9 @@ class Tour_Table:
         self.road_map = []
         self.rounds = ceil(log2(len(players)))
         self.curr_round = 0
+        
+        self.opps_scores_sum = {p.id: 0 for p in players}
+        self.buchg_val = {p.id: 0 for p in players}
 
     def is_going(self) -> bool:
         return self.curr_round != -1
@@ -112,41 +115,52 @@ class Tour_Table:
             ],
         })
 
-    def _iter_on_eq_score(self, eq_score: dict[int, float]):
+    def _opps_scores_sum_copmut(self):
+        for p in self.players:
+            buf = 0
+            for pair in self.prev_pairs:
+                if p in pair:
+                    opp_id = pair[0] if pair.index(p) else pair[1]
+                    buf += self.scores[opp_id]
+            self.opps_scores_sum[p] = buf
+            
+
+    def _iter_on_eq_score(self, eq_score: list[int]):
         if len(eq_score) > 1:
-            for eq_score_i in eq_score:
-                for pair in self.prev_pairs:
-                    if eq_score_i in pair:
-                        opp_id = pair[0] if pair.index(eq_score_i) else pair[1]
-                        eq_score[eq_score_i] += float(f'{self.scores[opp_id]:.1f}')
-                        
             for koef, score_i in enumerate(
                                     sorted(
-                                        eq_score.items(), 
-                                        key=lambda x: (x[1], -self.players[x[0]]._avg_sum)
+                                        eq_score, 
+                                        key=lambda x: (
+                                            self.opps_scores_sum[x], -self.players[x]._avg_sum
+                                        )
                                     )
                                 ):
-                self.scores[score_i[0]] += koef * 0.001
+                self.buchg_val[score_i] = koef
+            
 
     def _buchgolc(self):
         curr_score = -1
-        eq_score = {}
+        eq_score = []
         for i in sorted(self.scores.items(), key=lambda x: x[1]):
             if i[1] > curr_score:
                 curr_score = i[1]
                 self._iter_on_eq_score(eq_score)
-                eq_score = {i[0]: 0}
+                eq_score = [i[0]]
             else:
-                eq_score[i[0]] = 0
+                eq_score.append(i[0])
         self._iter_on_eq_score(eq_score)
 
     def tie_break(self):
-        if not self.is_going():
-            self._buchgolc()
+        self._buchgolc()
 
     def get_liderboard(self) -> list[Player]:
+        self._opps_scores_sum_copmut()
         self.tie_break()
-        sort_scores = sorted(self.scores.items(), key=lambda x: x[1], reverse=True)
+        sort_scores = sorted(
+                        self.scores.items(),
+                        key=lambda x: (x[1], self.buchg_val[x[0]]),
+                        reverse=True
+                    )
         return [self.players[i[0]] for i in sort_scores]
 
 
@@ -309,7 +323,7 @@ class TournamentSM:
 #TODO config +
 #TODO подсветка ошибок +
 #TODO подсветка ошибок минмакс, заглушка ожидания загрузки, шрифт
-#TODO вывод бухгольца, скрытие очков - активация по кнопке
+#TODO вывод бухгольца, скрытие очков - активация по кнопке +
 #TODO генератор бомжей +
 """Генератор бомжей. Надо такой, чтоб я мог выставить минимальное и
 максимальное значения кубов и модификатор, и бомж генерится с
@@ -317,7 +331,7 @@ class TournamentSM:
 с преимуществом - чтоб я выставлял шанс получения рерола"""
 #TODO оффлайн билд
 #TODO перезагрузка по кннопке
-#TODO библиотека персонажей
+#TODO библиотека персонажей +
 """Чтоб я мог как гм заполнить челиков туда и просто брать из банка,
 того же Кузьму, чтоб не дрочить каждый раз его ввод"""
 #TODO ориентация для мобилок

@@ -46,7 +46,7 @@ def show_round(sm):
 
 def show_leaderboard(sm):
     for p in sm.leaderboard:
-        print(f"  {p.full_info()}:\t{sm.tour.scores[p.id]}")
+        print(f"  {p.full_info()}:\t{sm.tour.scores[p.id]}, {sm.tour.opps_scores_sum[p.id]}, {p._avg_sum}")
 
 
 def run(sm):

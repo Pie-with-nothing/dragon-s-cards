@@ -14,6 +14,8 @@ from engine import TournamentSM, Player
 setup_players: list[Player] = []
 sm: TournamentSM | None = None
 
+lb_detailed = False
+
 config = dict(CONFIG_DEFAULTS)
 
 CONFIG_NUMBER_FIELDS = (
@@ -314,11 +316,13 @@ def on_generate_npc(event):
 
 @when("click", "#btn-start-tournament")
 def on_start(event):
-    global sm
+    global sm, lb_detailed
     if len(setup_players) < 2:
         return
+    lb_detailed = False
+    page["btn-lb-details"].innerText = "Подробно"
     show("panel-setup", False)
-    sm = TournamentSM(list(setup_players))   # копия — чтобы форма не влияла на турнир
+    sm = TournamentSM(list(setup_players))
     sm.start_round()
     render_tournament()
 
@@ -330,6 +334,34 @@ def show(id_, visible):
     if visible: el.classes.remove("hidden")
     else:       el.classes.add("hidden")
 
+
+def render_leaderboard():
+    lb = page["leaderboard"]
+    lb.innerHTML = ""
+
+    page["btn-lb-details"].disabled = sm is None
+    if sm is None:
+        return
+
+    for p in sm.leaderboard:
+        item = li()
+        item.innerText = p.full_info()
+
+        exp = button("▼", classes=["leaderboard-export"])
+        exp._dom_element.title = "Экспорт персонажа"
+        exp.dataset.pid = str(p.id)
+        item.append(exp)
+
+        if lb_detailed:
+            details = div(classes=["lb-details"])
+            details.innerText = (
+                f"Очки: {sm.tour.scores[p.id]} · "
+                f"Оппоненты: {sm.tour.opps_scores_sum[p.id]} · "
+                f"Ср. сумма: {p._avg_sum}"
+            )
+            item.append(details)
+
+        lb.append(item)
 
 def render_tournament():
     if sm is None:
@@ -349,18 +381,8 @@ def render_tournament():
 
     page["btn-next-round"].disabled = sm.state == TournamentSM.TOURNAMENT_DONE
 
-    lb = page["leaderboard"]
-    lb.innerHTML = ""
-    for p in sm.leaderboard:
-        item = li()
-        item.innerText = f"{p.full_info()}: {sm.tour.scores[p.id]:.3f}"
 
-        exp = button("▼", classes=["leaderboard-export"])
-        exp._dom_element.title = "Экспорт персонажа"
-        exp.dataset.pid = str(p.id)
-        item.append(exp)
-
-        lb.append(item)
+    render_leaderboard()
 
     hist = page["history"]
     hist.innerHTML = ""
@@ -428,6 +450,14 @@ def on_leaderboard_click(event):
         return
     _export_player(p)
 
+@when("click", "#btn-lb-details")
+def on_lb_details(event):
+    global lb_detailed
+    if sm is None:
+        return
+    lb_detailed = not lb_detailed
+    page["btn-lb-details"].innerText = "Скрыть" if lb_detailed else "Подробно"
+    render_leaderboard()
 # ==================== Старт ====================
 
 render_setup()
