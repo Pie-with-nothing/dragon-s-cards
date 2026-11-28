@@ -1,0 +1,8 @@
+name = "Dragon's Cards"
+packages = ["caissify-pairings", "numpy", "Faker", "marmel-grammar"]
+
+
+[files]
+"engine.py?v=2238941" = "./engine.py"
+"config.py?v=2238941" = "./config.py"
+"photo_2026-08-07_21-03-06.jpg" = "./photo_2026-08-07_21-03-06.jpg"
