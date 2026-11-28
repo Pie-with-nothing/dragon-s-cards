@@ -82,24 +82,35 @@ def dict_to_player(d) -> Player:
     if not isinstance(d, dict):
         raise ValueError("ожидался JSON-объект с полями персонажа")
 
-    raw_name = d.get("name", "")
+    required = ("name", "dice_pull", "modif", "reroll", "advantage", "is_human")
+    missing = [k for k in required if k not in d]
+    if missing:
+        raise ValueError("отсутствуют поля: " + ", ".join(missing))
+
+    raw_name = d["name"]
     name = str(raw_name).strip() if raw_name is not None else ""
     if not name:
-        name = gen_name()
+        raise ValueError("поле 'name' пустое")
 
     try:
-        dice_pull = int(d.get("dice_pull", 1))
-        modif = int(d.get("modif", 0))
-        reroll = int(d.get("reroll", 0))
+        dice_pull = int(d["dice_pull"])
+        modif = int(d["modif"])
+        reroll = int(d["reroll"])
     except (TypeError, ValueError):
         raise ValueError("dice_pull / modif / reroll должны быть целыми")
 
-    dice_pull = max(1, dice_pull)
-    reroll = max(0, min(2, reroll))
-    advantage = bool(d.get("advantage", False))
-    is_human = bool(d.get("is_human", False))
+    if not isinstance(d["advantage"], bool):
+        raise ValueError("поле 'advantage' должно быть true или false")
+    if not isinstance(d["is_human"], bool):
+        raise ValueError("поле 'is_human' должно быть true или false")
 
-    return Player(name, dice_pull, modif, reroll, advantage, is_human=is_human)
+    if dice_pull < 1:
+        raise ValueError("dice_pull должен быть ≥ 1")
+    if reroll < 0 or reroll > 2:
+        raise ValueError("reroll должен быть от 0 до 2")
+
+    return Player(name, dice_pull, modif, reroll,
+                  d["advantage"], is_human=d["is_human"])
 
 
 def player_to_json_str(p: Player) -> str:
