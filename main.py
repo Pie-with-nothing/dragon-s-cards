@@ -339,11 +339,9 @@ def on_generate_npc(event):
 
 @when("click", "#btn-start-tournament")
 def on_start(event):
-    global sm, lb_detailed
+    global sm
     if len(setup_players) < 2:
         return
-    lb_detailed = False
-    page["btn-lb-details"].innerText = "Подробно"
     show("panel-setup", False)
     sm = TournamentSM(list(setup_players))
     sm.start_round()
@@ -402,7 +400,10 @@ def render_tournament():
     else:
         page["round-done-prompt"].innerText = sm.prompt
 
-    page["btn-next-round"].disabled = sm.state == TournamentSM.TOURNAMENT_DONE
+
+    is_done = sm.state == TournamentSM.TOURNAMENT_DONE
+    show("btn-next-round",         not is_done)
+    show("btn-restart-tournament", is_done)
 
 
     render_leaderboard()
@@ -452,13 +453,28 @@ def on_reroll_no(event):
     sm.submit_reroll(False)
     render_tournament()
 
-
 @when("click", "#btn-next-round")
 def on_next_round(event):
     if sm is None:
         return
     sm.start_round()
     render_tournament()
+
+@when("click", "#btn-restart-tournament")
+def on_restart_tournament(event):
+    global sm, lb_detailed
+    sm = None
+    lb_detailed = False
+    page["btn-lb-details"].innerText = "Подробно"
+
+    show("panel-round-done", False)
+    show("panel-pc-roll",    False)
+    show("panel-reroll",     False)
+    show("panel-setup",      True)
+
+    page["history"].innerHTML = ""
+    render_leaderboard()   # очистит лидерборд и задизейблит «Подробно»
+    render_setup()         # восстановит список игроков
 
 @when("click", "#leaderboard")
 def on_leaderboard_click(event):
