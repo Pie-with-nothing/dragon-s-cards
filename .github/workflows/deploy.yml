@@ -1,0 +1,31 @@
+name: Deploy with Cache Busting
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inject cache-busting version
+        run: |
+          VERSION=$(git rev-parse --short HEAD)
+          echo "Using version: $VERSION"
+          # Обрабатываем index.html
+          find . -name "*.html" -exec sed -i "s/__VERSION__/$VERSION/g" {} \;
+          # Обрабатываем конфигурационные файлы PyScript
+          find . -name "pyscript.toml" -o -name "pyscript.json" | while read file; do
+            sed -i "s/__VERSION__/$VERSION/g" "$file"
+          done
+          # (Опционально) Обрабатываем другие .toml файлы, если они есть
+          find . -name "*.toml" ! -path "./.github/*" -exec sed -i "s/__VERSION__/$VERSION/g" {} \;
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
