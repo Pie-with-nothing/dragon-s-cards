@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pages: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,8 +28,13 @@ jobs:
           # (Опционально) Обрабатываем другие .toml файлы, если они есть
           find . -name "*.toml" ! -path "./.github/*" -exec sed -i "s/__VERSION__/$VERSION/g" {} \;
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      # 1. Загружаем папку с сайтом как артефакт
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: .
+          path: . # или ваша папка _site
+
+      # 2. Деплоим артефакт на GitHub Pages
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
