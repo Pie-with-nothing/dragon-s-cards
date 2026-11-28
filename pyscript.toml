@@ -3,6 +3,6 @@ packages = ["caissify-pairings", "numpy", "Faker", "marmel-grammar"]
 
 
 [files]
-"engine.py" = "./engine.py"
-"config.py" = "./config.py"
+"engine.py?v=__VERSION__" = "./engine.py"
+"config.py?v=__VERSION__" = "./config.py"
 "photo_2026-08-07_21-03-06.jpg" = "./photo_2026-08-07_21-03-06.jpg"
